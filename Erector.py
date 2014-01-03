@@ -6,6 +6,7 @@ from django.template.base import Template, TemplateDoesNotExist, VariableDoesNot
 
 from element import *
 from html_tag import *
+import html
 from static_content import *
 from requirements import *
 from externals import *
