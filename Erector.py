@@ -39,7 +39,27 @@ class Widget(Template, WidgetCacheMixin, WidgetRequirementsMixin):
     self.verify_requirements(context)
     self._context = context
 
-  def __getattr__(self, attr):
+  def __getattr__(self, method):
+    """
+    Return a method that passes this instance's buffer as the first argument in
+    addition to other arguments.
+
+    Used for elegant buffer sharing with helper methods.
+    """
+    try:
+      properties = html.valid_html[method]
+    except:
+      raise
+    else:
+      def pass_buffer(**kwargs):
+        HtmlTag(self.buffer, method, **kwargs)()
+      setattr(self, method, pass_buffer)
+      return pass_buffer
+
+  def v(self, attr):
+    """
+    Return the context variable of the given name.
+    """
     try:
       return self._context[attr]
     except:
@@ -63,6 +83,7 @@ class Widget(Template, WidgetCacheMixin, WidgetRequirementsMixin):
     Return the string with the rendered version of this Widget with the context.
     """
 
+    self.buffer = Buffer()
     return HtmlTag.render(self._wrapped_content())
 
   def to_tag(self):
