@@ -1,11 +1,11 @@
 
-from html_tag import HtmlTag
-
 # ###################################################################
-# PRE-DEFINED CLASSES
+# Valid HTML Tags and some properties
 # ###################################################################
 
 valid_html = {
+    "html": {},
+
     "area": {'self_closing':True},
     "base": {'self_closing':True},
     "br": {'self_closing':True},

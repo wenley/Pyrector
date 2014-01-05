@@ -1,17 +1,26 @@
 
 import cgi
+from html import valid_html
 from types import GeneratorType as Generator
-from element import Element
+
+class EscapedString(str):
+  escapes = {}
+  def __getattr__(self, attr):
+    if attr in self.escapes:
+      return self.escapes[attr]
+    else:
+      return None
 
 def make_html_safe(s):
-  if s.html_safe:
+  if isinstance(s, EscapedString) and s.html_safe:
     return s
   else:
-    s = cgi.escape(str(s))
-    s.html_safe = True
+    s = EscapedString(cgi.escape(str(s)))
+    s.escapes['html_safe'] = True
     return s
 def html_safe(s):
-  s.html_safe = True
+  s = EscapedString(str(s))
+  s.escapes['html_safe'] = True
   return s
 
 # Is this necessary?
@@ -26,10 +35,10 @@ def escape_quote(s,force=False):
 class InvalidHtmlTagUse(Exception): pass
 
 # Consider HTML escaping?
-class HtmlTag(Element):
+class HtmlTag(object):
   """An HTML tag. See __init__ docstring for details on use."""
 
-  def __init__(self, buffer, tag_name, class_=None, text="", **kwargs):
+  def __init__(self, buffer, tag_name, class_=None, properties=None, **kwargs):
     """
     Create an HTML tag for Widget rendering.
 
@@ -63,20 +72,21 @@ class HtmlTag(Element):
 
     self.buffer = buffer
     self.tag_name = tag_name
-    self.inner_text = text
     self.fields = kwargs
-    if class_ is not None:
+    if class_ is not None and isinstance(class_, dict):
+      for k,v in class_.iteritems():
+        self.fields[k] = v
+    elif class_ is not None:
       self.fields['class'] = class_
+    if properties is not None:
+      for k,v in properties.iteritems():
+        self.fields[k] = v
 
   # Used for decorator syntax for tags with children
   def __call__(self, method=None):
     if not method:
-      self.emit_open()
-      self.emit_inside()
-      self.emit_close()
+      self.emit()
     else:
-      if self.inner_text:
-        raise InvalidHtmlTagUse("Body text cannot be specified for a decorator HtmlTag")
       def wrapper(*args):
         self.emit_open()
         method(*args)
@@ -86,32 +96,45 @@ class HtmlTag(Element):
 
   # Wraps own formatting around some text
   def text(self, text):
-    if self.inner_text:
-      print >> sys.stderr, "Inner text is", self.inner_text
-      raise InvalidHtmlTagUse("Cannot wrap formatting with existing text around new text")
-    self.inner_text = text
-    self()
-    self.inner_text = None
+    self.emit_open()
+    self.buffer.inline(text)
+    self.emit_close()
+
+  # Wraps self around another callable (e.g. HtmlTag)
   def wrap(self, method):
     self(method)()
+
+  def emit(self):
+    self.buffer.append(self._open_tag())
+    if 'self_closing' not in valid_html[self.tag_name]:
+      self.buffer.inline(self._close_tag())
 
   # Push content to the buffer
   def emit_open(self):
     self.buffer.append(self._open_tag())
-  def emit_inside(self):
-    if self.inner_text:
-      self.buffer.append(self.inner_text)
+    self.buffer.indent()
+
   def emit_close(self):
-    self.buffer.append(self._close_tag())
+    self.buffer.unindent()
+    if 'inline' in valid_html[self.tag_name]:
+      self.buffer.inline(self._close_tag())
+    else:
+      self.buffer.append(self._close_tag())
 
   # Constructs the opening HTML tag for this TAG
   # @return String
   def _open_tag(self):
     '''Creates the opening tag for this element'''
-    s = "<%s " % (self.tag_name,)
+    s = "<%s" % (self.tag_name,)
+    if self.fields:
+      s += ' '
     s += " ".join('%s="%s"' % (str(key), str(val)) for key, val in self.fields.iteritems())
     s += ">"
     return s
+
+  def _open_close_tag(self):
+    s = self._open_tag()
+    return s[:-1] + '/>'
 
   # Constructs the closing HTML tag for this HtmlTag
   # @return String

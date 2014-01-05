@@ -3,6 +3,9 @@ from django.template.base import VariableDoesNotExist
 
 class WidgetRequirementsMixin(object):
 
+  def __init__(self, context):
+    self.verify_requirements(context)
+
   required = []
 
   @classmethod
