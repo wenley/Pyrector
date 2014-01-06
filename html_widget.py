@@ -15,19 +15,6 @@ class HtmlWidget(Widget, WidgetCacheMixin, WidgetRequirementsMixin):
   def __init__(self, context):
     super(HtmlWidget, self).__init__(context)
 
-  """
-  def __getattr__(self, tag_name):
-    try:
-      properties = html.valid_html[tag_name]
-    except KeyError:
-      return super(HtmlWidget, self).__getattr__(tag_name)
-    else:
-      def pass_buffer(**kwargs):
-        return HtmlTag(self.buffer, tag_name, **kwargs)
-      setattr(self, tag_name, pass_buffer)
-      return pass_buffer
-  """
-
   def _render(self):
     self.buffer = Buffer()
     self.html().wrap(self.content)

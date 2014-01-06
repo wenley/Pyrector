@@ -18,6 +18,10 @@ class Loader(BaseLoader):
 
   is_usable = True
 
+  def __init__(self, *args, **kwargs):
+    super(Loader, self).__init__(*args, **kwargs)
+    self.loaded = {}
+
   def get_template_sources(self, template_name, template_dirs=None):
     """
     Returns the absolute paths to "template_name", when appended to each
@@ -41,6 +45,8 @@ class Loader(BaseLoader):
         pass
 
   def load_template(self, template_name, template_dirs=None):
+    if template_name in self.loaded:
+      return self.loaded[template_name]
     tried = []
     for filepath in self.get_template_sources(template_name, template_dirs):
       try:
@@ -57,7 +63,9 @@ class Loader(BaseLoader):
         continue
       try:
         # Return the class so it may be instantiated with a context
-        return getattr(template_file, template_name), None
+        template = getattr(template_file, template_name)
+        self.loaded[template_name] = template
+        return template, None
       except AttributeError:
         print >> sys.stderr, "Attribute access failed"
         tried.append(filepath)
